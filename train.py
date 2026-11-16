@@ -13,7 +13,7 @@ def main(gpu, args):
     setup_seed(2022)
     # load data
     paired_dataset = DataLoaderTrain(dataroot='./data/Rain200H/', phase='train', finesize=args.crop_size)#
-    unpaired_dataset = TrainUnlabeled(dataroot='./data/real1800/', phase='train', finesize=args.crop_size)   ########### 每次需要调整candidate目录
+    unpaired_dataset = TrainUnlabeled(dataroot='./data/real1800/', phase='train', finesize=args.crop_size)   
     val_dataset = ValLabeled(dataroot='./data/Rain200H/', phase='test', finesize=args.crop_size)
     paired_sampler = None
     unpaired_sampler = None
