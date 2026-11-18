@@ -8,36 +8,6 @@ from torch.nn.functional import l1_loss
 
 from loss.contrast import Vgg19
 
-
-class MyLoss(nn.Module):
-    def __init__(self):
-        super(MyLoss, self).__init__()
-        self.L1 = nn.L1Loss()
-        self.L2 = nn.MSELoss()
-
-    def forward(self, xs, ys):
-        L2_temp = 0.2 * self.L2(xs, ys)
-        L1_temp = 0.8 * self.L1(xs, ys)
-        L_total = L1_temp + L2_temp
-        return L_total
-
-
-class ColorLoss(nn.Module):
-    def __init__(self):
-        super(ColorLoss, self).__init__()
-
-    def forward(self, res, gt):
-        res = (res + 1.0) * 127.5
-        gt = (gt + 1.0) * 127.5
-        r_mean = (res[:, 0, :, :] + gt[:, 0, :, :]) / 2.0
-        r = res[:, 0, :, :] - gt[:, 0, :, :]
-        g = res[:, 1, :, :] - gt[:, 1, :, :]
-        b = res[:, 2, :, :] - gt[:, 2, :, :]
-        p_loss_temp = (((512 + r_mean) * r * r) / 256) + 4 * g * g + (((767 - r_mean) * b * b) / 256)
-        p_loss = torch.mean(torch.sqrt(p_loss_temp + 1e-8)) / 255.0
-        return p_loss
-
-
 class PerpetualLoss(nn.Module):
     def __init__(self, vgg_model):
         super(PerpetualLoss, self).__init__()
@@ -143,7 +113,7 @@ class TVLoss(torch.nn.Module):
         return t.size()[1] * t.size()[2] * t.size()[3]
 
 
-class LocalContrastLoss(nn.Module): #version 4.0  mask = input_img - pseudo   分块（1、2、3层）+雨层
+class LocalContrastLoss(nn.Module): 
     def __init__(self, patch_size=16):
         super().__init__()
         self.patch_size = patch_size
@@ -169,13 +139,12 @@ class LocalContrastLoss(nn.Module): #version 4.0  mask = input_img - pseudo   �
             p_f  = pred_feats[i]
             ps_f = pseudo_feats[i]
             in_f = input_feats[i]
-            if i in self.patch_layers: #  前三层使用 patch loss
+            if i in self.patch_layers:
                 p_patch  = self.extract_patches(p_f)
                 ps_patch = self.extract_patches(ps_f)
                 in_patch = self.extract_patches(in_f)
                 d_ap = self.l1(p_patch, ps_patch.detach()).mean(dim=2)
                 d_an = self.l1(p_patch, in_patch.detach()).mean(dim=2)
-                # mask 只作用于前三层
                 if i in self.mask_layers:
                     mask_resized = F.interpolate(
                         rain_mask, size=p_f.shape[2:],
@@ -183,12 +152,11 @@ class LocalContrastLoss(nn.Module): #version 4.0  mask = input_img - pseudo   �
                     )
                     mask_patch = self.extract_patches(mask_resized)
                     mean_mask = mask_patch.mean(dim=2)
-                    # 放大负样本距离：factor in [1, 2]  (可以调为 1+alpha*mean_mask)
                     scale = (1.0 + mean_mask).detach()
                     d_an = d_an * scale
                 contrast = d_ap / (d_an + 1e-7)
                 contrast = contrast.mean(dim=1)
-            else: #  后两层（i=3,4）：使用整个 feature map 做 L1 loss
+            else: #  
                 d_ap = self.l1(p_f, ps_f.detach()).mean(dim=[1,2,3])
                 d_an = self.l1(p_f, in_f.detach()).mean(dim=[1,2,3])
                 contrast = d_ap / (d_an + 1e-7)
