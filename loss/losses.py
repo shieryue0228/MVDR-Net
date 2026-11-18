@@ -125,7 +125,7 @@ class LocalContrastLoss(nn.Module):
     def extract_patches(self, x):
         B, C, H, W = x.shape
         assert H % self.patch_size == 0 and W % self.patch_size == 0, \
-            "H, W 必须能整除 patch_size"
+            "H, W must divisible by patch_size"
         x = x.unfold(2, self.patch_size, self.patch_size).unfold(3, self.patch_size, self.patch_size)
         return x.contiguous().view(B, C * self.patch_size * self.patch_size, -1).permute(0, 2, 1)  # [B, patches, feat_dim]
     def forward(self, pred, pseudo, input_img):
